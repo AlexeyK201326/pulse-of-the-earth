@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pulse of the Earth — Интерактивный 3D Атлас</title>
+    
+    <!-- Подключаем стили нашего проекта -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Подключаем шрифты для красивого футуристичного интерфейса -->
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Иконки FontAwesome для интерфейса (кнопки, панели) -->
+    <link rel="stylesheet" href="https://cloudflare.com">
+
+    <!-- Стили для детальной 2D карты Leaflet (нужны на уровне городов) -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+
+    <!-- Главные 3D библиотеки: Three.js и надстройка Globe.gl для глобуса -->
+    <script src="https://unpkg.com"></script>
+    <script src="https://unpkg.com"></script>
+    
+    <!-- Скрипт для детальной 2D карты Leaflet -->
+    <script src="https://unpkg.com"></script>
+</head>
+<body>
+    <!-- Основной контейнер, в котором движок развернет 3D глобус -->
+    <div id="globe-container"></div>
+
+    <!-- Контейнер для детальной 2D карты городов (изначально скрыт) -->
+    <div id="map-container">
+        <button id="back-to-globe-btn" class="control-btn">
+            <i class="fa-solid fa-earth-americas"></i> Вернуться к глобусу
+        </button>
+    </div>
+
+    <!-- Верхняя панель управления сайтом -->
+    <header class="main-header">
+        <div class="logo">
+            <span class="pulse-dot"></span>
+            <h1>PULSE OF THE EARTH</h1>
+        </div>
+        
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="search-input" placeholder="Поиск стран и городов...">
+        </div>
+
+        <div class="header-controls">
+            <button id="route-mode-btn" class="control-btn" title="Проложить маршрут">
+                <i class="fa-solid fa-route"></i> Маршрут
+            </button>
+            <button id="iss-btn" class="control-btn" title="Где сейчас МКС?">
+                <i class="fa-solid fa-satellite"></i> МКС
+            </button>
+            <button id="random-country-btn" class="control-btn" title="Случайная страна">
+                <i class="fa-solid fa-shuffle"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Выезжающая боковая панель информации (Сайдбар) -->
+    <aside id="info-sidebar" class="sidebar">
+        <!-- Кнопка закрытия панели -->
+        <button id="close-sidebar-btn" class="close-btn">&times;</button>
+        
+        <div class="sidebar-scroll-wrapper">
+            <!-- Секция 1: Главная инфо-карточка -->
+            <section class="info-section header-section">
+                <div class="flag-wrapper">
+                    <img id="country-flag" src="" alt="Флаг страны" style="display: none;">
+                </div>
+                <h2 id="place-title">Выберите локацию</h2>
+                <p id="place-subtitle">Кликните на глобус для начала путешествия</p>
+            </section>
+
+            <!-- Секция 2: Краткое описание из Википедии -->
+            <section class="info-section description-section">
+                <h3><i class="fa-solid fa-book-open"></i> Описание</h3>
+                <p id="wiki-text">Здесь появится краткая историческая и географическая справка из Википедии после выбора места.</p>
+            </section>
+
+            <!-- Секция 3: Фотогалерея Unsplash -->
+            <section class="info-section gallery-section">
+                <h3><i class="fa-solid fa-camera"></i> Достопримечательности</h3>
+                <div id="photo-gallery" class="gallery-grid">
+                    <!-- Сюда JS будет вставлять карточки с легальными авторскими фотографиями -->
+                </div>
+            </section>
+
+            <!-- Секция 4: Статистика и Живые данные -->
+            <section class="info-section stats-section">
+                <h3><i class="fa-solid fa-chart-simple"></i> Сводные данные</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Столица</span>
+                        <span id="stat-capital" class="stat-value">—</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Население</span>
+                        <span id="stat-population" class="stat-value">—</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Валюта</span>
+                        <span id="stat-currency" class="stat-value">—</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Местное время</span>
+                        <span id="stat-time" class="stat-value">—</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Секция 5: Инструменты маршрута (показывается только в режиме маршрута) -->
+            <section id="route-info-section" class="info-section route-section" style="display: none;">
+                <h3><i class="fa-solid fa-location-arrow"></i> Карточка пути</h3>
+                <div class="route-details">
+                    <p id="route-distance">Расстояние: —</p>
+                    <p id="route-time-plane">На самолете: —</p>
+                    <p id="route-time-car">На машине: —</p>
+                </div>
+                <button id="clear-route-btn" class="danger-btn">Сбросить маршрут</button>
+            </section>
+        </div>
+    </aside>
+    <!-- Панель-индикатор для режима построения маршрутов -->
+    <div id="route-instructions" class="status-toast" style="display: none;">
+        <i class="fa-solid fa-circle-info"></i>
+        <span>Режим маршрута: выберите первый город или страну на глобусе</span>
+    </div>
+
+    <!-- Подключаем наши JavaScript-файлы с логикой проекта -->
+    <!-- Файлы подключаем строго в этом порядке, чтобы модули видели друг друга -->
+    <script src="api.js"></script>
+    <script src="routes.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
